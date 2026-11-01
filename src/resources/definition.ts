@@ -208,7 +208,7 @@ export type FormSettings = {
   navStyle?: "chevrons" | "pager" | "link" | "arrow" | "none";
   showTitle?: boolean; showStepLabel?: boolean; showEnterHint?: boolean; showOkIcon?: boolean;
   nextLabel?: string; timeHint?: string; confirmAnswers?: boolean; swipeNavigation?: boolean;
-  brandPosition?: "left" | "center" | "right"; brandStyle?: "badge" | "chip" | "text";
+  brandPosition?: "left" | "center" | "right" | "corner"; brandStyle?: "badge" | "chip" | "pill" | "text";
   /** One image held across every screen. */
   sidePanel?: { mask?: "none" | "rounded" | "arch" | "circle"; url?: string; alt?: string; side?: "left" | "right"; ratio?: number; color?: string; fit?: "cover" | "contain"; mobile?: "banner" | "hide" };
   header?: { kind?: "banner" | "illustration"; url: string; alt?: string; height?: number; align?: "left" | "center" };
