@@ -47,7 +47,7 @@ export type SimpleCondition = { type: "condition"; source: ConditionSource; oper
 export type Condition = SimpleCondition | { type: "group"; combinator: "and" | "or"; conditions: Condition[] };
 
 export type Choice = {
-  id: string; label: string; /** Product rows: a line under the name. */ description?: string; value?: string; imageUrl?: string; icon?: string; points?: Record<string, number>; correct?: boolean; price?: string;
+  id: string; label: string; /** Product rows: a line under the name. */ description?: string; value?: string; imageUrl?: string; /** Shortcut letter on the badge. */ key?: string; icon?: string; points?: Record<string, number>; correct?: boolean; price?: string;
   variants?: { id: string; label: string; price?: string }[];
   /** Show "Free" for a zero price. */
   free?: boolean;
@@ -129,9 +129,9 @@ export interface FieldDefinition {
   cardStyle?: "card" | "inset" | "art" | "tile";
   cardSize?: "sm" | "md" | "lg";
   imageAspect?: "square" | "portrait" | "landscape" | "auto";
-  badgePlacement?: "top_left" | "top_right" | "bottom_left" | "bottom_right" | "inline";
+  badgePlacement?: "top_left" | "top_right" | "bottom_left" | "bottom_right" | "inline" | "above";
   choices?: Choice[];
-  randomize?: boolean;
+  randomize?: boolean; keepLetters?: boolean;
   allowOther?: boolean;
   min?: number;
   max?: number;
@@ -163,6 +163,8 @@ export type Welcome = {
   mediaPosition?: "top" | "bottom";
   /** The media is a title lockup shown whole and unframed. */
   lockup?: boolean;
+  /** pager = the floating pager starts the form instead of a button. */
+  startControl?: "button" | "pager";
 };
 
 export type Scoring = {
@@ -205,7 +207,7 @@ export type FormSettings = {
   minCompletionMs?: number;
   quotas?: { id: string; when: Condition; limit: number }[];
   landing?: { heading: string; body?: string; heroImageUrl?: string };
-  navStyle?: "chevrons" | "pager" | "link" | "arrow" | "none";
+  navStyle?: "chevrons" | "pager" | "link" | "arrow" | "none"; pagerMobile?: "pager" | "button";
   showTitle?: boolean; showStepLabel?: boolean; showEnterHint?: boolean; showOkIcon?: boolean;
   nextLabel?: string; timeHint?: string; confirmAnswers?: boolean; swipeNavigation?: boolean;
   brandPosition?: "left" | "center" | "right" | "corner"; brandStyle?: "badge" | "chip" | "pill" | "text";
@@ -282,9 +284,9 @@ export type Theme = {
   buttonIcon?: "check" | "arrow" | "none";
   choiceSelected?: "tint" | "solid";
   motion?: "none" | "subtle" | "lively";
-  requiredStyle?: "asterisk" | "text" | "none";
+  requiredStyle?: "asterisk" | "dot" | "text" | "none";
   statementStyle?: "quote" | "rule" | "plain" | "glyph";
-  errorStyle?: "inline" | "strip" | "toast";
+  errorStyle?: "inline" | "strip" | "band" | "toast";
   buttonWidth?: "auto" | "full";
 };
 
