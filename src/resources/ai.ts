@@ -33,8 +33,8 @@ export class AiResource {
   }
   /** Vetted logic rule suggestions. Proposal only. */
   suggestLogic(body: AiSource, o?: RequestOptions) { return this.h.data<{ suggestions: { reason: string; rule: unknown }[]; dropped: unknown[]; provider: string }>("POST", "/ai/suggest-logic", { body, ...o }); }
-  /** Natural language to a validated calculated-field expression. */
-  writeFormula(body: AiSource & { instruction: string }, o?: RequestOptions) { return this.h.data<{ expression: string; explanation: string; references: string[]; provider: string }>("POST", "/ai/formula", { body, ...o }); }
+  /** Natural language to a validated calculated-field expression, with a step-by-step explanation and test results on sample answers. Pass `expression` instead of `instruction` to explain and test an existing one (no AI credits). */
+  writeFormula(body: AiSource & { instruction?: string; expression?: string; sample?: Record<string, unknown> }, o?: RequestOptions) { return this.h.data<{ expression: string; explanation: string; references: string[]; provider: string; steps: { expression: string; description: string; value?: string | number | boolean | null }[]; tests: { answers: Record<string, unknown>; result: string | number | boolean | null }[] }>("POST", "/ai/formula", { body, ...o }); }
   /** Form from pasted `text` or a base64 text document (txt, md, csv, tsv, json, html). With `create` also saves a draft. */
   importDocument(body: { text?: string; file?: { filename: string; contentBase64: string }; create?: { name: string; folderId?: string } }, o?: RequestOptions) {
     return this.h.data<{ definition: FormDefinition; issues: DefinitionIssue[]; form?: Form }>("POST", "/ai/import", { body, ...o });

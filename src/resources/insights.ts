@@ -45,8 +45,8 @@ export class InsightsResource {
 
   /** CSV text or base64 XLSX mapped to field ids. Use dryRun to validate first. */
   importResponses(formId: string, body: ResponseImportInput, o?: RequestOptions) { return this.h.data<ResponseImportResult>("POST", `/forms/${formId}/import`, { body, ...o }); }
-  /** format: docx and spss come back base64, html and print as text. */
-  report(formId: string, format: "docx" | "html" | "spss" | "print", filters?: Condition, o?: RequestOptions) { return this.h.data<FileResult>("GET", `/forms/${formId}/report`, { query: { format, filters: filters ? JSON.stringify(filters) : undefined }, ...o }); }
+  /** format: docx, pptx, spss and sav come back base64, html and print as text. */
+  report(formId: string, format: "docx" | "html" | "pptx" | "spss" | "sav" | "print", filters?: Condition, o?: RequestOptions) { return this.h.data<FileResult>("GET", `/forms/${formId}/report`, { query: { format, filters: filters ? JSON.stringify(filters) : undefined }, ...o }); }
 
   readonly feeds = {
     list: (formId: string, o?: RequestOptions) => this.h.data<Json[]>("GET", `/forms/${formId}/feed-tokens`, o),

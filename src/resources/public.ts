@@ -12,7 +12,7 @@ export type PublicForm = {
   /** Absent while a password-protected form is locked. */
   version?: { id: string; version: number; definition: FormDefinition };
 };
-export type CompleteResult = { submissionId: string; outcome: Record<string, unknown>; ending: Record<string, unknown> | null; redirectUrl?: string; paymentRequired: boolean; checkoutUrl?: string };
+export type CompleteResult = { submissionId: string; outcome: Record<string, unknown>; ending: Record<string, unknown> | null; redirectUrl?: string; paymentRequired: boolean; checkoutUrl?: string; paymentClient?: { provider: "braintree" | "authorizenet"; client: Record<string, string> } };
 
 export class PublicClient {
   private readonly base: string;
@@ -48,6 +48,11 @@ export class PublicClient {
   /** Adaptive AI of a form that opted in. The server falls back to the author's static content on any trouble. */
   ai(slug: string, body: { action: "followup" | "classify" | "copy"; fieldId?: string; submissionId?: string; resumeToken?: string; answers: Record<string, unknown>; attributes?: Record<string, unknown>; targets?: string[] }, signal?: AbortSignal) {
     return this.call<Record<string, unknown>>("POST", `/forms/${encodeURIComponent(slug)}/ai`, body, signal);
+  }
+  /** Options of a database-backed choice field (record picker). `q` searches server side; pass `nextCursor` back as `cursor` for the next page. */
+  choices(slug: string, fieldId: string, o: { q?: string; cursor?: string; limit?: number } = {}, signal?: AbortSignal) {
+    const qs = new URLSearchParams(Object.entries(o).flatMap(([k, v]) => (v === undefined ? [] : [[k, String(v)]])));
+    return this.call<{ choices: { id: string; label: string }[]; origin: "live" | "cache" | "stale" | "fallback" | "unavailable"; nextCursor?: string }>("GET", `/forms/${encodeURIComponent(slug)}/choices/${encodeURIComponent(fieldId)}${qs.size ? `?${qs}` : ""}`, undefined, signal);
   }
   /** Typed attributes and prefill from the form's profile lookup. */
   profile(slug: string, body: { uid?: string; uid_sig?: string; attributes?: Record<string, unknown> }, signal?: AbortSignal) {

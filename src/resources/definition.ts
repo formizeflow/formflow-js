@@ -50,6 +50,8 @@ export type Condition = SimpleCondition | { type: "group"; combinator: "and" | "
 export type Choice = {
   id: string; label: string; /** Product rows: a line under the name. */ description?: string; value?: string; imageUrl?: string; /** Shortcut letter on the badge. */ key?: string; icon?: string; points?: Record<string, number>; correct?: boolean; price?: string;
   variants?: { id: string; label: string; price?: string }[];
+  /** Product with several option axes (Color and Size), up to 4 groups of 20 choices. Ignored when `variants` is set. Orders carry one choice per group. */
+  optionGroups?: { id: string; label: string; choices: { id: string; label: string; /** Added to the unit price. */ priceDelta?: string }[] }[];
   /** Show "Free" for a zero price. */
   free?: boolean;
   /** Reaction line shown when this choice is selected. Supports piping. */
@@ -152,8 +154,17 @@ export interface FieldDefinition {
   min?: number;
   max?: number;
   step?: number;
-  /** date: segments (typed day, month, year) or selects (three dropdowns with captions). */
-  entry?: "segments" | "selects";
+  /** date: segments (typed day, month, year), selects (three dropdowns with captions) or native (the browser's own date input). */
+  entry?: "segments" | "selects" | "native";
+  /** rating, nps, ces, opinion_scale: joined = one strip of boxed cells sharing borders (default separate). */
+  scaleStyle?: "separate" | "joined";
+  /** rating, nps, ces, opinion_scale: end labels below (default) or above the row. */
+  labelsPosition?: "below" | "above";
+  /** product: checkbox in the photo corner selects the product (quantity 1). */
+  selectControl?: "checkbox";
+  /** product with withQuantity: stepper (default) or select (0 to quantityMax). */
+  quantityEntry?: "stepper" | "select";
+  quantityMax?: number;
   /** Hide the label visually; screen readers still read it. */
   hideLabel?: boolean;
   /** Owner-facing name in results and exports. */
@@ -264,7 +275,7 @@ export type NotificationSettings = {
 };
 export type FormSettings = {
   presentation?: PresentationMode;
-  showProgress?: boolean; allowBack?: boolean; reviewBeforeSubmit?: boolean; allowResume?: boolean; savePartials?: boolean; abandonReminder?: { enabled?: boolean; afterHours?: number; emailFieldId?: string };
+  showProgress?: boolean; allowBack?: boolean; reviewBeforeSubmit?: boolean; allowResume?: boolean; /** "* Indicates required question" under the title, plus a progress-saved note when allowResume is on. */ requiredLegend?: boolean; savePartials?: boolean; abandonReminder?: { enabled?: boolean; afterHours?: number; emailFieldId?: string };
   /** ISO date-time. The form shows a "not open yet" state until then. */
   openAt?: string;
   closeAt?: string; maxResponses?: number; oneResponsePerRespondent?: boolean;
@@ -383,6 +394,8 @@ export type Theme = {
   statementStyle?: "quote" | "rule" | "plain" | "glyph";
   errorStyle?: "inline" | "strip" | "band" | "toast";
   buttonWidth?: "auto" | "full";
+  /** Phones: the cover start button is pinned to the bottom edge at full width. */
+  mobileButtonPin?: boolean;
 };
 
 export type FormDefinition = {

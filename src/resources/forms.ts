@@ -21,7 +21,7 @@ export type UpdateFormInput = {
 };
 export type ListFormsParams = ListParams & { status?: FormStatus; folderId?: string; q?: string; tag?: string };
 export type PublishResult = { form: Form; version: FormVersion; warnings: DefinitionIssue[] };
-export type ImportInput = { format: "formflow" | "typeform" | "csv"; data: unknown; name?: string; create?: boolean };
+export type ImportInput = { format: "formflow" | "typeform" | "csv" | "surveymonkey" | "sheet-header" | "question-list" | "xlsx" | "docx"; /** xlsx and docx: base64 string. */ data: unknown; name?: string; create?: boolean };
 export type ImportResult = { definition: FormDefinition; report: { imported: number; unsupported: { item: string; reason: string }[] }; form?: Form };
 export type ShareLinks = {
   formId: string; slug: string; published: boolean; passwordRequired: boolean;

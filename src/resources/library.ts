@@ -24,7 +24,7 @@ export class LibraryResource {
     insert: (formId: string, body: { blockId: string; sectionId?: string; index?: number; expectedRevision?: number }, o?: RequestOptions) => this.h.data<{ form: unknown; inserted: { fieldIds: string[]; sectionId?: string } }>("POST", `/forms/${formId}/insert-block`, { body, ...o }),
   };
   readonly community = {
-    list: (o?: RequestOptions) => this.h.data<CommunityTemplate[]>("GET", "/community-templates", o),
+    list: (q?: { q?: string; category?: string }, o?: RequestOptions) => this.h.data<CommunityTemplate[]>("GET", "/community-templates", { query: q, ...o }),
     mine: (o?: RequestOptions) => this.h.data<CommunityTemplate[]>("GET", "/community-templates/mine", o),
     submit: (body: { formId: string; title: string; description?: string; category?: string }, o?: RequestOptions) => this.h.data<CommunityTemplate>("POST", "/community-templates", { body, ...o }),
     use: (id: string, name?: string, o?: RequestOptions) => this.h.data<unknown>("POST", `/community-templates/${id}/use`, { body: { name }, ...o }),

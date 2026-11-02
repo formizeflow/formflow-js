@@ -23,6 +23,8 @@ export type PaymentRules = {
   subscription?: { interval?: "day" | "week" | "month" | "year"; intervalCount?: number; trialDays?: number; recurringDonation?: boolean };
   /** Stripe pmc_... id choosing the wallets (Apple Pay, Google Pay, Link) and methods Checkout offers. */
   stripePaymentMethodConfiguration?: string;
+  /** Apple Pay / Google Pay per provider. square: on the hosted link; mollie: applePay shortcut (no Google Pay); braintree: both as buttons in the payment panel; authorizenet: googlePay only. */
+  wallets?: Partial<Record<"stripe" | "square" | "mollie" | "braintree" | "authorizenet", { applePay?: boolean; googlePay?: boolean }>>;
 };
 
 /** Payments run through the workspace's own Stripe or PayPal account; FormFlow does not hold funds. */
@@ -41,6 +43,10 @@ export class PaymentsResource {
   /** Braintree / Authorize.Net: charge the submission's open payment with a browser-SDK token. The amount is the server-priced one. */
   charge(submissionId: string, body: { nonce?: string; dataDescriptor?: string; dataValue?: string }, o?: RequestOptions) {
     return this.h.data<{ status: "paid" | "failed"; paymentId: string }>("POST", `/public/payments/${submissionId}/charge`, { body, ...o });
+  }
+  /** Recover or re-open checkout. `wallet: "applePay"` opens Mollie's hosted page on Apple Pay when the form enables it. Braintree and Authorize.Net return `client` instead of a URL. */
+  checkout(submissionId: string, wallet?: "applePay" | "googlePay", o?: RequestOptions) {
+    return this.h.data<{ checkoutUrl?: string; provider?: string; client?: Record<string, string> }>("POST", `/public/payments/${submissionId}/checkout`, { query: { wallet }, ...o });
   }
 
   readonly connections = {
