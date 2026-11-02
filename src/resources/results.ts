@@ -14,7 +14,10 @@ export type ShareLinkInput = {
 /** `url` is a bearer capability: store it like a credential. */
 export type ShareLink = { id: string; formId: string; name: string; state: "active" | "expired" | "revoked"; passwordProtected: boolean; expiresAt: number | null; url: string | null; config: Json };
 export type Invitation = { id: string; formId: string; email: string | null; singleUse: boolean; expiresAt: number | null; usedAt?: number | null; revokedAt?: number | null; [k: string]: unknown };
-export type InvitationInput = { invitations: { email?: string; attributes?: Record<string, string> }[]; expiresInDays?: number; singleUse?: boolean; send?: boolean };
+export type InvitationInput = {
+  invitations: { email?: string; phone?: string; language?: string; contactId?: string; attributes?: Record<string, string> }[]; expiresInDays?: number; singleUse?: boolean; send?: boolean;
+  channel?: "email" | "sms" | "whatsapp"; sendAt?: number; remindAfterDays?: number[]; quickAnswer?: boolean;
+};
 
 /** Results workbench: triage, corrections, spam, invitations, share links and version history. */
 export class ResultsResource {

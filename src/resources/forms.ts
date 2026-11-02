@@ -19,7 +19,7 @@ export type UpdateFormInput = {
   /** Write-only. Hashed server-side; `null` removes the password. Applies at the next publish. */
   password?: string | null;
 };
-export type ListFormsParams = ListParams & { status?: FormStatus; folderId?: string; q?: string };
+export type ListFormsParams = ListParams & { status?: FormStatus; folderId?: string; q?: string; tag?: string };
 export type PublishResult = { form: Form; version: FormVersion; warnings: DefinitionIssue[] };
 export type ImportInput = { format: "formflow" | "typeform" | "csv"; data: unknown; name?: string; create?: boolean };
 export type ImportResult = { definition: FormDefinition; report: { imported: number; unsupported: { item: string; reason: string }[] }; form?: Form };
@@ -69,6 +69,10 @@ export class FormsResource {
   version(id: string, version: number, o?: RequestOptions) { return this.h.data<FormVersion>("GET", `/forms/${id}/versions/${version}`, o); }
   import(body: ImportInput, o?: RequestOptions) { return this.h.data<ImportResult>("POST", "/forms/import", { body, ...o }); }
   /** Hosted URL, QR code and embed snippets. */
+  /** Hosted URL that opens the form with answers (`prefill`: field id to value), hidden fields and respondent attributes filled in. */
+  prefillLink(id: string, body: { prefill?: Record<string, string | number | boolean | string[]>; hidden?: Record<string, string>; respondent?: Record<string, string>; params?: Record<string, string> }, o?: RequestOptions) { return this.h.data<{ url: string; published: boolean }>("POST", `/forms/${id}/prefill-link`, { body, ...o }); }
+  /** A complete HTML page that embeds the live form, plus the embed snippets. */
+  html(id: string, o?: RequestOptions) { return this.h.data<{ html: string; hostedUrl: string; embedUrl: string; embed: Record<string, string> }>("GET", `/forms/${id}/html`, o); }
   share(id: string, o?: RequestOptions) { return this.h.data<ShareLinks>("GET", `/forms/${id}/share`, o); }
   /** Atomic batch edit of the draft. */
   operations(id: string, operations: DraftOperation[], expectedRevision?: number, o?: RequestOptions) {

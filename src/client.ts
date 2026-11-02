@@ -11,10 +11,16 @@ import { ExportsResource } from "./resources/exports";
 import { PublicClient } from "./resources/public";
 import { ResultsResource } from "./resources/results";
 import { PaymentsResource } from "./resources/payments";
+import { SchedulingResource } from "./resources/scheduling";
 import { WorkflowsResource } from "./resources/workflows";
 import { ExperimentsResource } from "./resources/experiments";
 import { DestinationsResource } from "./resources/destinations";
 import { OnboardingResource } from "./resources/onboarding";
+import { PlatformResource } from "./resources/platform";
+import { InsightsResource } from "./resources/insights";
+import { LibraryResource } from "./resources/library";
+import { DistributionResource } from "./resources/distribution";
+import { AdminResource } from "./resources/admin";
 
 export { DEFAULT_VERSION };
 export type { ClientOptions, ListParams, Page, RequestOptions } from "./core";
@@ -33,10 +39,17 @@ export class FormFlowClient {
   readonly account: AccountResource;
   readonly results: ResultsResource;
   readonly payments: PaymentsResource;
+  readonly scheduling: SchedulingResource;
   readonly workflows: WorkflowsResource;
   readonly experiments: ExperimentsResource;
   readonly destinations: DestinationsResource;
   readonly onboarding: OnboardingResource;
+  readonly platform: PlatformResource;
+  readonly insights: InsightsResource;
+  readonly library: LibraryResource;
+  readonly distribution: DistributionResource;
+  /** Audiences, tags, team templates, org security, roles, groups, brand kit, domain join, partner provisioning. */
+  readonly admin: AdminResource;
   /** Respondent endpoints (no API key). */
   readonly public: PublicClient;
 
@@ -53,10 +66,16 @@ export class FormFlowClient {
     this.account = new AccountResource(this.http);
     this.results = new ResultsResource(this.http);
     this.payments = new PaymentsResource(this.http);
+    this.scheduling = new SchedulingResource(this.http);
     this.workflows = new WorkflowsResource(this.http);
     this.experiments = new ExperimentsResource(this.http);
     this.destinations = new DestinationsResource(this.http);
     this.onboarding = new OnboardingResource(this.http);
+    this.platform = new PlatformResource(this.http);
+    this.insights = new InsightsResource(this.http);
+    this.library = new LibraryResource(this.http);
+    this.distribution = new DistributionResource(this.http);
+    this.admin = new AdminResource(this.http);
     this.public = new PublicClient({ baseUrl: this.http.opts.baseUrl, fetch: o.fetch });
   }
 
