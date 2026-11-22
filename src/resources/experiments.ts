@@ -13,13 +13,15 @@ export type ExperimentVariant = {
 export type Experiment = {
   id: string; formId: string; name: string; status: ExperimentStatus; kind: ExperimentKind; entrySlug: string | null;
   variants: (ExperimentVariant & { paused?: boolean })[]; winnerVariantId: string | null; config: Json; startedAt: number | null; endedAt: number | null;
+  /** Where the owner sees this test in the dashboard. */
+  dashboardUrl: string;
 };
 export type ExperimentInput = {
   name: string; kind?: ExperimentKind; entrySlug?: string | null; variants?: ExperimentVariant[];
   /** assignment, primary/secondary metrics, guardrails, traffic, layer, holdout, holdoutExit, targeting, schedule, ramp, bandit, autoStop, forward, factors, question. */
   config?: Json;
 };
-export type Conversion = { uid: string; event: string; value?: number; eventId?: string; occurredAt?: number };
+export type Conversion = { uid: string; event: string; value?: number; eventId?: string; /** Count only the first time this uid reports this event. */ firstOnly?: boolean; occurredAt?: number };
 export type ConversionResult = { recorded: boolean; attributed: boolean; variantId?: string };
 
 /** A/B, multivariate and question-level experiments, downstream conversions and AI help. */
@@ -29,6 +31,10 @@ export class ExperimentsResource {
   get(id: string, o?: RequestOptions) { return this.h.data<Experiment>("GET", `/experiments/${id}`, o); }
   create(body: ExperimentInput & { formId: string }, o?: RequestOptions) { return this.h.data<Experiment>("POST", "/experiments", { body, ...o }); }
   update(id: string, test: ExperimentInput, o?: RequestOptions) { return this.h.data<Experiment>("PATCH", `/experiments/${id}`, { body: { action: "update", test }, ...o }); }
+  /** Create the test at this entry address, or update it while it is a draft (`formId` is needed to create). Idempotent: the infrastructure-as-code call. */
+  upsertByEntry(entrySlug: string, body: ExperimentInput & { formId?: string }, o?: RequestOptions) { return this.h.data<{ experiment: Experiment; created: boolean }>("PUT", `/experiments/by-entry/${encodeURIComponent(entrySlug)}`, { body, ...o }); }
+  /** Forget one uid in a test (assignment, exposures, conversions). Needs form:write; audit logged. */
+  removeParticipant(id: string, uid: string, o?: RequestOptions) { return this.h.data<{ removed: { assignments: number; exposures: number; conversions: number } }>("DELETE", `/experiments/${id}/participants/${encodeURIComponent(uid)}`, o); }
   delete(id: string, o?: RequestOptions) { return this.h.data<null>("DELETE", `/experiments/${id}`, o); }
   start(id: string, o?: RequestOptions) { return this.h.data<Experiment>("PATCH", `/experiments/${id}`, { body: { action: "start" }, ...o }); }
   stop(id: string, o?: RequestOptions) { return this.h.data<Experiment>("PATCH", `/experiments/${id}`, { body: { action: "stop" }, ...o }); }

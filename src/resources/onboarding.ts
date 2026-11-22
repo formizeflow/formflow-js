@@ -10,6 +10,8 @@ export type DecideRequest = {
   uid?: string;
   /** Lowercase hex HMAC-SHA256 of `uid` keyed with the workspace identity secret. Not needed on the authenticated variant. */
   uid_sig?: string;
+  /** An Atlas session JWT as proof of the uid (workspace setting `identity.atlasIssuer`). Replaces uid and uid_sig. */
+  atlas_token?: string;
   attributes?: Attributes;
   ph_session?: string;
   ph_distinct?: string;
@@ -19,10 +21,18 @@ export type DecideRequest = {
   resume?: boolean;
   /** false returns only the decision, without the definition. */
   definition?: boolean;
+  /** "none" returns only the decision (same as definition: false, and the `?include=none` query). */
+  include?: "all" | "none";
+  /** Answer show: false, reason "already_shown", once this uid was exposed to the entry's test or completed the form. */
+  firstRunOnly?: boolean;
+  /** With firstRunOnly: a person shown but not yet done still sees it for this many hours after first exposure. */
+  maxAgeHours?: number;
+  /** Integration tests: a real arm, but no exposure is counted. A uid starting `test_` does the same. */
+  test?: boolean;
 };
 export type DecideResult = {
   show: boolean;
-  /** holdout, already_completed, stage_open, waiting, all_completed, ... */
+  /** holdout, already_shown, already_completed, stage_open, waiting, all_completed, ... */
   reason: string;
   experimentId?: string; variantId?: string; formId?: string; slug?: string; versionId?: string;
   journeyStep?: { journeyId: string; stageId: string; name: string; index: number; total: number };
@@ -35,8 +45,9 @@ export type DecideResult = {
 
 export type ProfileSourceInput =
   | { kind: "endpoint"; name: string; url: string; secret: string }
-  | { kind: "posthog"; name: string; host?: string; projectId: string; apiKey: string };
-export type ProfileSource = { id: string; name: string; kind: "endpoint" | "posthog"; config: Record<string, string>; createdAt: number; updatedAt: number };
+  | { kind: "posthog"; name: string; host?: string; projectId: string; apiKey: string }
+  | { kind: "lucida"; name: string; host?: string; projectId: string; apiKey: string };
+export type ProfileSource = { id: string; name: string; kind: "endpoint" | "posthog" | "lucida"; config: Record<string, string>; createdAt: number; updatedAt: number };
 
 export type JourneyStage = { id: string; name: string; formId?: string; entrySlug?: string; after?: { stage?: string; event?: string; days?: number }; when?: Condition };
 export type JourneyInput = { name: string; status?: "draft" | "active" | "paused"; definition: { stages: JourneyStage[]; eventSourceId?: string } };

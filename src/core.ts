@@ -26,7 +26,7 @@ export type RequestOptions = {
   idempotencyKey?: string;
 };
 
-export type Page<T> = { data: T[]; nextCursor: string | null };
+export type Page<T> = { data: T[]; nextCursor: string | null; /** A filtered page stopped at the server scan limit before it filled: keep paging with nextCursor. */ partial?: boolean; scanned?: number };
 export type ListParams = { cursor?: string; limit?: number };
 
 type Init = { query?: object; body?: unknown } & RequestOptions;
@@ -94,7 +94,7 @@ export class HttpClient {
   }
 
   page<T>(path: string, q?: object, o?: RequestOptions): Promise<Page<T>> {
-    return this.request<Page<T>>("GET", path, { query: q, ...o }).then((r) => ({ data: r.data, nextCursor: r.nextCursor ?? null }));
+    return this.request<Page<T>>("GET", path, { query: q, ...o }).then((r) => ({ data: r.data, nextCursor: r.nextCursor ?? null, ...(r.partial ? { partial: true, scanned: r.scanned } : {}) }));
   }
 
   /** Auto-paginating async iterator over any list endpoint. */

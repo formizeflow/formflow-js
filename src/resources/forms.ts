@@ -9,6 +9,8 @@ export type Form = {
   themeId: string | null; folderId: string | null;
   /** A password is set on the draft (write-only: set it with `forms.update(id, { password })`). */
   passwordRequired: boolean; createdAt: number; updatedAt: number;
+  /** The form's editor in the dashboard. */
+  dashboardUrl: string;
 };
 export type FormVersion = { id: string; formId: string; version: number; definition?: FormDefinition; theme?: Record<string, unknown>; publishedBy: string; createdAt: number };
 export type CreateFormInput = { name: string; definition?: FormDefinition; templateId?: string; folderId?: string; slug?: string };
@@ -20,8 +22,11 @@ export type UpdateFormInput = {
   password?: string | null;
 };
 export type ListFormsParams = ListParams & { status?: FormStatus; folderId?: string; q?: string; tag?: string };
-export type PublishResult = { form: Form; version: FormVersion; warnings: DefinitionIssue[] };
-export type ImportInput = { format: "formflow" | "typeform" | "csv" | "surveymonkey" | "sheet-header" | "question-list" | "xlsx" | "docx"; /** xlsx and docx: base64 string. */ data: unknown; name?: string; create?: boolean };
+/** `unchanged: true`: the draft equals the live version, so that version is returned and nothing was created. */
+export type PublishResult = { form: Form; version: FormVersion; warnings: DefinitionIssue[]; unchanged: boolean };
+export type UpsertFormInput = { name?: string; definition: FormDefinition; folderId?: string; /** Publish only if the definition changed. */ publish?: boolean; /** Needed to publish a change to an arm of a running experiment. */ force?: boolean };
+export type UpsertFormResult = { form: Form; created: boolean; /** A new version was created. */ published: boolean; /** Nothing changed. */ unchanged: boolean };
+export type ImportInput = { format: "formflow" | "typeform" | "csv" | "surveymonkey" | "tally" | "paperform" | "wpforms" | "gravity" | "sheet-header" | "question-list" | "xlsx" | "docx"; /** xlsx and docx: base64 string. */ data: unknown; name?: string; create?: boolean };
 export type ImportResult = { definition: FormDefinition; report: { imported: number; unsupported: { item: string; reason: string }[] }; form?: Form };
 export type ShareLinks = {
   formId: string; slug: string; published: boolean; passwordRequired: boolean;
@@ -49,6 +54,7 @@ export type DraftOperation =
   | { op: "set_endings"; endings: Ending[] };
 export type OperationsResult = { form: Form; applied: number; issues: DefinitionIssue[] };
 
+export type FormComment = { id: string; formId: string; fieldId: string | null; authorId: string; body: string; mentions: string[]; resolvedAt: number | null; resolvedBy: string | null; createdAt: number };
 export class FormsResource {
   constructor(private readonly h: HttpClient) {}
 
@@ -64,7 +70,11 @@ export class FormsResource {
   archive(id: string, o?: RequestOptions) { return this.h.data<Form>("POST", `/forms/${id}/archive`, { body: {}, ...o }); }
   restore(id: string, o?: RequestOptions) { return this.h.data<Form>("POST", `/forms/${id}/restore`, { body: {}, ...o }); }
   /** Throws ValidationError whose `details.issues` lists the blocking problems. */
-  publish(id: string, o?: RequestOptions) { return this.h.data<PublishResult>("POST", `/forms/${id}/publish`, { body: {}, ...o }); }
+  publish(id: string, { force, ...o }: RequestOptions & { force?: boolean } = {}) { return this.h.data<PublishResult>("POST", `/forms/${id}/publish`, { body: force ? { force } : {}, ...o }); }
+  /** Idempotent create-or-update of the draft by slug (global slugs); with `publish: true` publishes only when the definition changed. */
+  upsertBySlug(slug: string, body: UpsertFormInput, o?: RequestOptions) { return this.h.data<UpsertFormResult>("PUT", `/forms/by-slug/${encodeURIComponent(slug)}`, { body, ...o }); }
+  /** The theme the draft would publish with right now (workspace default, saved theme, brand kit and inline overrides merged; CSS sanitized). */
+  theme(id: string, o?: RequestOptions) { return this.h.data<ThemeOverrides>("GET", `/forms/${id}/theme`, o); }
   versions(id: string, o?: RequestOptions) { return this.h.data<FormVersion[]>("GET", `/forms/${id}/versions`, o); }
   version(id: string, version: number, o?: RequestOptions) { return this.h.data<FormVersion>("GET", `/forms/${id}/versions/${version}`, o); }
   import(body: ImportInput, o?: RequestOptions) { return this.h.data<ImportResult>("POST", "/forms/import", { body, ...o }); }
@@ -96,6 +106,13 @@ export class FormsResource {
     add: (id: string, section: Section, o?: RequestOptions) => this.h.data<unknown>("POST", `/forms/${id}/sections`, { body: section, ...o }),
     update: (id: string, sectionId: string, patch: Partial<Section>, o?: RequestOptions) => this.h.data<unknown>("PATCH", `/forms/${id}/sections/${sectionId}`, { body: patch, ...o }),
     delete: (id: string, sectionId: string, o?: RequestOptions) => this.h.data<unknown>("DELETE", `/forms/${id}/sections/${sectionId}`, o),
+  };
+  /** Internal draft comments, anchored to a question (`fieldId`) or the whole form. Mention teammates with @email. */
+  readonly comments = {
+    list: (id: string, q: { fieldId?: string; includeResolved?: boolean } = {}, o?: RequestOptions) => this.h.data<FormComment[]>("GET", `/forms/${id}/comments`, { query: { fieldId: q.fieldId, includeResolved: q.includeResolved === undefined ? undefined : String(q.includeResolved) }, ...o }),
+    add: (id: string, body: { body: string; fieldId?: string }, o?: RequestOptions) => this.h.data<FormComment>("POST", `/forms/${id}/comments`, { body, ...o }),
+    resolve: (id: string, commentId: string, resolved = true, o?: RequestOptions) => this.h.data<FormComment>("PATCH", `/forms/${id}/comments/${commentId}`, { body: { resolved }, ...o }),
+    delete: (id: string, commentId: string, o?: RequestOptions) => this.h.data<null>("DELETE", `/forms/${id}/comments/${commentId}`, o),
   };
   readonly logic = {
     list: (id: string, o?: RequestOptions) => this.h.data<LogicRule[]>("GET", `/forms/${id}/logic`, o),

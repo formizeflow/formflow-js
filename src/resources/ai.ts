@@ -10,6 +10,13 @@ export type AnalysisResult = {
   [k: string]: unknown;
 };
 
+export type AiMemory = { brandVoice?: string; audience?: string; defaultLanguages?: string[]; compliancePhrasing?: string; fieldPatterns?: string };
+export type ThemeAnalysis = {
+  formId: string; fieldId: string; answerCount: number;
+  themes: { label: string; count: number; pct: number; examples: string[] }[];
+  caveats: string[]; model: string; aiGenerated: true; generatedAt: string; cached?: boolean;
+};
+
 /** Work on a saved form's draft (`formId`) or on a definition you hold. */
 export type AiSource = { formId?: string; definition?: FormDefinition };
 
@@ -42,6 +49,18 @@ export class AiResource {
   /** Theme from a site `url`, a logo/`image` (base64) or a `prompt`. With `apply` + `formId` + `expectedRevision` it merges into the draft. */
   brandKit(body: { url?: string; image?: { contentBase64: string }; prompt?: string; formId?: string; apply?: boolean; expectedRevision?: number }, o?: RequestOptions) {
     return this.h.data<{ theme: Record<string, unknown>; palette: string[]; notes: string[]; aiGenerated: boolean; applied: boolean; draftRevision?: number }>("POST", "/ai/brand-kit", { body, ...o });
+  }
+  /** Workspace AI memory (brand voice, audience, default languages, compliance phrasing, field patterns), injected into generateForm and edit. */
+  getMemory(o?: RequestOptions) { return this.h.data<AiMemory>("GET", "/ai/memory", o); }
+  /** Replace the AI memory (workspace:manage). `{}` clears it. */
+  setMemory(body: AiMemory, o?: RequestOptions) { return this.h.data<AiMemory>("PUT", "/ai/memory", { body, ...o }); }
+  /** Theme shares of an open-text question over ALL answers (each classified once; cached per answer count). Refused above the cost guard unless `maxAnswers` is raised. */
+  themes(formId: string, body: { fieldId: string; maxAnswers?: number; force?: boolean }, o?: RequestOptions) {
+    return this.h.data<ThemeAnalysis>("POST", `/forms/${formId}/ai/themes`, { body, ...o });
+  }
+  /** The latest cached theme analysis for a question, or null. No AI credits. */
+  cachedThemes(formId: string, fieldId: string, o?: RequestOptions) {
+    return this.h.data<ThemeAnalysis | null>("GET", `/forms/${formId}/ai/themes`, { query: { fieldId }, ...o });
   }
   /** AI summary of responses. Sensitive fields never reach the model. */
   analyzeResponses(formId: string, body: { question?: string; fieldIds?: string[]; filters?: Condition; maxSample?: number } = {}, o?: RequestOptions) {

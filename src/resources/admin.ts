@@ -2,7 +2,7 @@ import type { HttpClient, Page, RequestOptions } from "../core";
 
 export type Permission = string;
 export type FormAccessMode = "anyone" | "domains" | "contact_list" | "members" | "login";
-export type FormAccess = { formId: string; mode: FormAccessMode; domains: string[]; listId: string | null; ipAllow: string[]; ipDeny: string[] };
+export type FormAccess = { formId: string; mode: FormAccessMode; domains: string[]; listId: string | null; ipAllow: string[]; ipDeny: string[]; countryAllow: string[]; countryDeny: string[] };
 export type OrgSecurity = { require2fa: boolean; idleTimeoutMinutes: number | null; ipAllow: string[]; ipDeny: string[] };
 export type BrandKit = { mode: "suggested" | "enforced"; logoUrl: string | null; themes: { id: string; name: string; definition: Record<string, unknown> }[]; defaultThemeId: string | null; formDefaults: Record<string, unknown> };
 export type JoinDomain = { domain: string; verifiedAt: number | null; dnsName: string; dnsValue: string };
@@ -20,7 +20,7 @@ export class AdminResource {
   /** Who may open and answer a published form, plus per-form IP lists. */
   readonly formAccess = {
     get: (formId: string, o?: RequestOptions) => this.h.data<FormAccess>("GET", `/forms/${formId}/access`, o),
-    set: (formId: string, body: { mode: FormAccessMode; domains?: string[]; listId?: string; ipAllow?: string[]; ipDeny?: string[] }, o?: RequestOptions) => this.h.data<FormAccess>("PUT", `/forms/${formId}/access`, { body, ...o }),
+    set: (formId: string, body: { mode: FormAccessMode; domains?: string[]; listId?: string; ipAllow?: string[]; ipDeny?: string[]; countryAllow?: string[]; countryDeny?: string[] }, o?: RequestOptions) => this.h.data<FormAccess>("PUT", `/forms/${formId}/access`, { body, ...o }),
   };
   readonly tags = {
     list: (o?: RequestOptions) => this.h.data<{ tag: string; forms: number }[]>("GET", "/tags", o),
@@ -42,6 +42,9 @@ export class AdminResource {
   };
   /** Workspace default theme (preset id or saved theme id; null clears it). */
   setDefaultTheme(defaultThemeId: string | null, o?: RequestOptions) { return this.h.data<{ id: string; defaultThemeId: string | null }>("PATCH", "/workspaces/current", { body: { defaultThemeId }, ...o }); }
+
+  /** IANA timezone (e.g. "America/New_York") for day buckets and date ranges in results and analytics; null = UTC. */
+  setTimezone(timezone: string | null, o?: RequestOptions) { return this.h.data<{ id: string; timezone: string | null }>("PATCH", "/workspaces/current", { body: { timezone }, ...o }); }
 
   readonly security = {
     get: (o?: RequestOptions) => this.h.data<OrgSecurity>("GET", "/org/security", o),
@@ -85,6 +88,12 @@ export class AdminResource {
   removeMember(membershipId: string, transferTo?: string, o?: RequestOptions) { return this.h.data<{ transferred?: Record<string, number> } | void>("DELETE", `/members/${membershipId}`, { query: { transferTo }, ...o }); }
   /** Email delivery log. */
   emailLog(q: { event?: EmailEvent["event"]; email?: string; cursor?: string; limit?: number } = {}, o?: RequestOptions): Promise<Page<EmailEvent>> { return this.h.page<EmailEvent>("/org/email-log", q, o); }
+
+  /** Dead-letter view of background jobs. Platform administrators only. */
+  readonly jobs = {
+    list: (q: { status?: "queued" | "running" | "done" | "failed" | "dead"; queue?: string; limit?: number } = {}, o?: RequestOptions) => this.h.data<{ id: string; queue: string; status: string; attempts: number; maxAttempts: number; lastError: string | null; runAt: number; createdAt: number }[]>("GET", "/admin/jobs", { query: q, ...o }),
+    requeue: (id: string, o?: RequestOptions) => this.h.data<{ id: string; status: "queued" }>("POST", `/admin/jobs/${id}/requeue`, { body: {}, ...o }),
+  };
 
   /** Partner and reseller provisioning. */
   readonly partner = {

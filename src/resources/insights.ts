@@ -2,8 +2,11 @@ import type { HttpClient, RequestOptions } from "../core";
 import type { Condition } from "./definition";
 
 type Json = Record<string, unknown>;
-export type ChartKind = "auto" | "bar" | "column" | "pie" | "donut" | "line" | "number" | "table" | "wordcloud";
-export type DashboardWidget = { id: string; formId: string; fieldId?: string; metric?: "responses" | "completion_rate" | "avg_time" | "views"; chart?: ChartKind; title?: string; span?: 1 | 2 | 3; windowDays?: number };
+export type ChartKind = "auto" | "bar" | "column" | "pie" | "donut" | "line" | "number" | "table" | "wordcloud" | "stacked_bar" | "bar_100" | "trend" | "pivot";
+export type DashboardWidget = { id: string; formId: string; fieldId?: string; metric?: "responses" | "completion_rate" | "avg_time" | "views"; chart?: ChartKind; title?: string; span?: 1 | 2 | 3; windowDays?: number;
+  /** stacked_bar and bar_100: [row question, column question]; pivot: [question]. */
+  fieldIds?: string[]; /** trend: the metric per period. */ trendMetric?: "responses" | "views" | "starts" | "completion_rate" | "avg_duration" | "nps" | "csat" | "ces" | "mean" | "lead_score"; bucket?: "day" | "week" | "month";
+  /** Only responses matching this condition count. */ filter?: Condition; /** Re-weights answers of fieldId to the target shares. */ weighting?: { fieldId: string; targets: Record<string, number> } };
 export type Dashboard = { id: string; name: string; widgets: DashboardWidget[]; shared: boolean; createdAt: number; updatedAt: number };
 export type FileResult = { filename: string; contentType: string; encoding: "utf8" | "base64"; content: string; rows?: number };
 export type ResponseImportInput = { format: "csv" | "xlsx"; content: string; mapping?: Record<string, string | null>; dryRun?: boolean; onError?: "skip" | "abort" };

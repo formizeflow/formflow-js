@@ -24,5 +24,6 @@ export * from "./resources/destinations";
 export * from "./resources/platform";
 export * from "./resources/insights";
 export * from "./resources/distribution";
+export * from "./resources/programs";
 export * from "./resources/admin";
 export { generateKeyPair, encryptBytes, decryptBytes, encryptValue, decryptValue, encryptAnswers, decryptAnswers, isEnvelope, type PublicKeyJwk, type PrivateKeyJwk, type EncryptionConfig } from "./encryption";

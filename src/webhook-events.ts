@@ -9,16 +9,28 @@ type Outcome = { scores?: Record<string, number>; leadScore?: number; leadTier?:
 /** Every webhook event, discriminated by `type`. Narrow with `switch (event.type)`. */
 export type WebhookEvent =
   | Envelope<"form.published", { formId: string; versionId: string; version: number; slug: string }>
-  | Envelope<"form.updated", { formId: string }>
+  | Envelope<"form.updated", { formId: string; fields: string[] }>
   | Envelope<"form.archived", { formId: string }>
+  | Envelope<"form.deleted", { formId: string }>
   | Envelope<"submission.created", { submissionId: string; formId: string; version: number; status: "partial" }>
   | Envelope<"submission.completed", {
       submissionId: string; formId: string; version: number;
       /** Field id to answer. Secret fields are omitted. */
       answers: Record<string, unknown>; labels: Record<string, string>; computed: Outcome;
       attribution: Record<string, string> | null; completedAt: number; paymentStatus: "none" | "pending" | "paid" | "failed" | "refunded";
+      /** One per consent field shown, ticked or not; `text` is the exact wording. purpose "marketing" only when the box is marked as a marketing opt-in. */
+      consents: { fieldId: string; purpose: "marketing" | "other"; channel: "email" | "sms" | null; granted: boolean; text: string; policyUrl: string | null; at: number }[];
+      /** From the form's first email, phone, name and contact fields. */
+      contact: { email?: string; phone?: string; firstName?: string; lastName?: string };
+      /** "uid:<user id>" when the respondent was signed in, else null. */
+      respondentId: string | null;
     }>
+  | Envelope<"submission.updated", { submissionId: string; formId: string; fields: string[]; status: string }>
   | Envelope<"submission.deleted", { submissionId: string; formId: string }>
+  | Envelope<"comment.created", { commentId: string; submissionId: string; formId: string; authorId: string; mentions: number }>
+  | Envelope<"member.added", { membershipId: string; userId: string; role: string; organizationId: string }>
+  | Envelope<"member.removed", { membershipId: string; userId: string; role: string; organizationId: string }>
+  | Envelope<"member.role_changed", { membershipId: string; userId: string; from: string; to: string; organizationId: string }>
   | Envelope<"payment.status_changed", { submissionId: string; formId?: string; paymentStatus: string; [k: string]: unknown }>
   | Envelope<"workflow.completed", { workflowId?: string; runId?: string; [k: string]: unknown }>
   | Envelope<"workflow.failed", { workflowId?: string; runId?: string; error?: string; [k: string]: unknown }>
@@ -27,6 +39,7 @@ export type WebhookEvent =
   | Envelope<"experiment.guardrail_breached", ExperimentEventData & { variantId: string; metric: string; relativeDrop: number; limit: number }>
   | Envelope<"experiment.winner_declared", ExperimentEventData & { winnerVariantId: string; auto: boolean; evidence?: Record<string, unknown> }>
   | Envelope<"experiment.promoted", ExperimentEventData & { winnerVariantId?: string | null; auto?: boolean; policy?: number }>
+  | Envelope<"apikey.expiring", { keyId: string; name: string; prefix: string; expiresAt: number }>
   | Envelope<"webhook.test", Record<string, unknown>>;
 
 export type WebhookEventType = WebhookEvent["type"];

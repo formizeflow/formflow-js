@@ -6,13 +6,13 @@ import type { DecideRequest, DecideResult } from "./onboarding";
 export type PublicForm = {
   form: { id: string; workspaceId: string; name: string; slug: string; status: string };
   theme: Theme;
-  availability: { open: true } | { open: false; reason: "closed" | "archived" | "expired" | "max_responses" | "not_open" };
+  availability: { open: true } | { open: false; reason: "closed" | "archived" | "expired" | "max_responses" | "quota" | "not_open" };
   passwordRequired: boolean;
   unlocked: boolean;
   /** Absent while a password-protected form is locked. */
   version?: { id: string; version: number; definition: FormDefinition };
 };
-export type CompleteResult = { submissionId: string; outcome: Record<string, unknown>; ending: Record<string, unknown> | null; redirectUrl?: string; paymentRequired: boolean; checkoutUrl?: string; paymentClient?: { provider: "braintree" | "authorizenet"; client: Record<string, string> } };
+export type CompleteResult = { submissionId: string; outcome: Record<string, unknown>; ending: Record<string, unknown> | null; redirectUrl?: string; paymentRequired: boolean; checkoutUrl?: string; paymentClient?: { provider: "braintree" | "authorizenet" | "square"; client: Record<string, string> } };
 
 export class PublicClient {
   private readonly base: string;
@@ -45,6 +45,10 @@ export class PublicClient {
   }
   /** Headless decide for native rendering: show or not, which variant or journey step, resume and the published definition. Holdout answers `show: false`; excluded (outside traffic or targeting) answers `show: true` with the original form and no experiment id. */
   decide(body: DecideRequest, signal?: AbortSignal) { return this.call<DecideResult>("POST", "/onboarding/decide", body, signal); }
+  /** Report a goal for a signed uid (or `atlas_token`) with no API key. Needs a running or finished test at `entrySlug`; rate limited per uid. */
+  reportConversion(entrySlug: string, body: { uid?: string; uid_sig?: string; atlas_token?: string; event: string; eventId?: string; firstOnly?: boolean }, signal?: AbortSignal) {
+    return this.call<{ recorded: boolean; attributed: boolean; variantId?: string }>("POST", `/experiments/${encodeURIComponent(entrySlug)}/conversions`, body, signal);
+  }
   /** Adaptive AI of a form that opted in. The server falls back to the author's static content on any trouble. */
   ai(slug: string, body: { action: "followup" | "classify" | "copy"; fieldId?: string; submissionId?: string; resumeToken?: string; answers: Record<string, unknown>; attributes?: Record<string, unknown>; targets?: string[] }, signal?: AbortSignal) {
     return this.call<Record<string, unknown>>("POST", `/forms/${encodeURIComponent(slug)}/ai`, body, signal);

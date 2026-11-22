@@ -1,6 +1,6 @@
 import type { HttpClient, RequestOptions } from "../core";
 
-export type DestinationKind = "posthog" | "amplitude" | "mixpanel" | "segment";
+export type DestinationKind = "posthog" | "lucida" | "amplitude" | "mixpanel" | "segment" | "hermetica";
 export type Destination = {
   id: string; kind: DestinationKind; name: string; enabled: boolean; lastError: string | null; canQuery: boolean;
   config: { eventFilter: string[]; propertyMap: Record<string, string> };
@@ -11,6 +11,8 @@ export type FormAnalyticsSettings = {
   enabled: boolean; destinationIds?: string[] | null;
   /** Questions whose answer value may be sent. Sensitive and secret fields never are. */
   shareFieldIds?: string[];
+  /** Questions sent to Lucida as `$survey_response` events (one per answer). Only these are sent. */
+  surveyFieldIds?: string[];
   personProps?: { fieldId: string; property: string; mode?: "set" | "set_once" }[];
   groupKey?: string | null; groupType?: string | null; idleMinutes?: number;
 };
@@ -22,6 +24,8 @@ export class DestinationsResource {
   create(body: { kind: DestinationKind; name: string; credentials: Record<string, string>; config?: Partial<Destination["config"]>; enabled?: boolean }, o?: RequestOptions) { return this.h.data<Destination>("POST", "/destinations", { body, ...o }); }
   update(id: string, body: { name?: string; credentials?: Record<string, string>; config?: Partial<Destination["config"]>; enabled?: boolean }, o?: RequestOptions) { return this.h.data<Destination>("PATCH", `/destinations/${id}`, { body, ...o }); }
   delete(id: string, o?: RequestOptions) { return this.h.data<null>("DELETE", `/destinations/${id}`, o); }
+  /** Requeue this destination's dead deliveries. */
+  retry(id: string, o?: RequestOptions) { return this.h.data<{ requeued: number }>("POST", `/destinations/${id}/retry`, { body: {}, ...o }); }
   /** Sends one clearly labelled test event. */
   test(id: string, o?: RequestOptions) { return this.h.data<{ ok: boolean; error?: string }>("POST", `/destinations/${id}/test`, { body: {}, ...o }); }
   getFormSettings(formId: string, o?: RequestOptions) { return this.h.data<{ settings: FormAnalyticsSettings | null }>("GET", `/forms/${formId}/analytics-settings`, o); }

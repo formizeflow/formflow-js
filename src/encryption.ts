@@ -3,7 +3,7 @@
  * End-to-end style encryption (A15). Marked answers are encrypted in the respondent's browser with the form's public key
  * (RSA-OAEP-SHA256 wrapping a fresh AES-256-GCM key per value). The server stores only the public key and the ciphertext; the private
  * key stays with the form owner. WebCrypto only, so the same code runs in the browser, in Node and in the SDKs.
- * Envelope: "ffenc1." + base64url(JSON {v, kid, k, iv, ct}). Plain RSA-OAEP, no PGP: see docs/encryption.md for why.
+ * Envelope: "ffenc1." + base64url(JSON {v, kid, k, iv, ct}), or an armored OpenPGP message when the form holds a PGP key (./pgp, loaded on demand).
  */
 const subtle = (): SubtleCrypto => globalThis.crypto.subtle;
 const enc = new TextEncoder(), dec = new TextDecoder();
@@ -13,7 +13,7 @@ const RSA = { name: "RSA-OAEP", hash: "SHA-256" } as const;
 
 export type PublicKeyJwk = { kty: "RSA"; n: string; e: string; alg?: string; ext?: boolean; key_ops?: string[] };
 export type PrivateKeyJwk = PublicKeyJwk & { d: string; p?: string; q?: string; dp?: string; dq?: string; qi?: string };
-export type EncryptionConfig = { publicKeyJwk: PublicKeyJwk; keyId: string; fieldIds: string[] };
+export type EncryptionConfig = { publicKeyJwk?: PublicKeyJwk; pgp?: { publicKeyArmored: string }; keyId: string; fieldIds: string[] };
 
 const b64 = (b: ArrayBuffer | Uint8Array): string => { const u = b instanceof Uint8Array ? b : new Uint8Array(b); let s = ""; for (const x of u) s += String.fromCharCode(x); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
 const unb64 = (s: string): Uint8Array<ArrayBuffer> => { const p = atob(s.replace(/-/g, "+").replace(/_/g, "/")); const u = new Uint8Array(p.length); for (let i = 0; i < p.length; i++) u[i] = p.charCodeAt(i); return u; };
@@ -46,14 +46,17 @@ export async function decryptBytes(priv: PrivateKeyJwk, box: { k: string; iv: st
   return new Uint8Array(await subtle().decrypt({ name: "AES-GCM", iv: unb64(box.iv) }, aes, unb64(box.ct)));
 }
 
-export const isEnvelope = (v: unknown): v is string => typeof v === "string" && v.startsWith(ENVELOPE_PREFIX) && v.length <= MAX_ENVELOPE && /^[A-Za-z0-9_-]+$/.test(v.slice(ENVELOPE_PREFIX.length));
+export const isRsaEnvelope = (v: unknown): v is string => typeof v === "string" && v.startsWith(ENVELOPE_PREFIX) && v.length <= MAX_ENVELOPE && /^[A-Za-z0-9_-]+$/.test(v.slice(ENVELOPE_PREFIX.length));
+/** An armored OpenPGP message. Only the shape is checked; the server never opens it. */
+export const isPgpEnvelope = (v: unknown): v is string => typeof v === "string" && v.length <= MAX_ENVELOPE && /^-----BEGIN PGP MESSAGE-----[A-Za-z0-9+/=:.\s-]+-----END PGP MESSAGE-----\s*$/.test(v);
+export const isEnvelope = (v: unknown): v is string => isRsaEnvelope(v) || isPgpEnvelope(v);
 
 export async function encryptValue(pub: PublicKeyJwk, value: unknown, kid?: string): Promise<string> {
   const box = await encryptBytes(pub, enc.encode(JSON.stringify(value)), kid);
   return ENVELOPE_PREFIX + b64(enc.encode(JSON.stringify(box)));
 }
 export async function decryptValue(priv: PrivateKeyJwk, envelope: string): Promise<unknown> {
-  if (!isEnvelope(envelope)) throw new Error("Not an encrypted value");
+  if (!isRsaEnvelope(envelope)) throw new Error("Not an RSA-encrypted value");
   return JSON.parse(dec.decode(await decryptBytes(priv, JSON.parse(dec.decode(unb64(envelope.slice(ENVELOPE_PREFIX.length)))))));
 }
 
@@ -61,7 +64,7 @@ const empty = (v: unknown) => v === undefined || v === null || v === "" || (Arra
 /** Replaces the marked fields' values with envelopes; empty values stay empty so required checks still work. */
 export async function encryptAnswers<T extends Record<string, unknown>>(cfg: EncryptionConfig, answers: T): Promise<T> {
   const out: Record<string, unknown> = { ...answers };
-  for (const id of cfg.fieldIds) if (id in out && !empty(out[id]) && !isEnvelope(out[id])) out[id] = await encryptValue(cfg.publicKeyJwk, out[id], cfg.keyId);
+  for (const id of cfg.fieldIds) if (id in out && !empty(out[id]) && !isEnvelope(out[id])) out[id] = cfg.pgp ? await (await import("./pgp")).encryptPgp(cfg.pgp.publicKeyArmored, out[id]) : await encryptValue(cfg.publicKeyJwk!, out[id], cfg.keyId);
   return out as T;
 }
 /** Decrypts every envelope found in the answers (also inside repeating-section rows). Values that cannot be opened stay as they are. */

@@ -5,7 +5,7 @@ export type ApprovalStatus = "pending" | "approved" | "rejected" | "expired" | "
 export type SigningInput = {
   title: string; message?: string; documentName: string;
   document: { kind: "text"; text: string } | { kind: "file"; fileId: string };
-  signers: { name: string; email: string }[]; order?: "sequential" | "parallel"; expiresInDays?: number;
+  signers: { name: string; email: string; /** Email the signer a one-time code to enter before signing. */ requireCode?: boolean }[]; order?: "sequential" | "parallel"; expiresInDays?: number;
 };
 
 export type PortalInput = {
@@ -43,6 +43,23 @@ export class WorkflowsResource {
   /** Runs, failures, average duration and assignment statuses per step. */
   readonly stepReport = (workflowId: string, o?: RequestOptions) => this.h.data<Json[]>("GET", `/workflows/${workflowId}/step-report`, o);
 
+  /** The signed-in user's inbox (assignments and approvals). An API key must pass `email`. */
+  readonly tasks = {
+    list: (q: { state?: "open" | "overdue" | "done"; email?: string } = {}, o?: RequestOptions) => this.h.data<{ tasks: Json[]; counts: { open: number; overdue: number; done: number } }>("GET", "/tasks", { query: q, ...o }),
+    act: (id: string, body: { action: "approve" | "reject" | "complete"; comment?: string }, o?: RequestOptions) => this.h.data<{ status: string }>("POST", `/tasks/${id}/act`, { body, ...o }),
+  };
+
+  /** Share one response with a person, a role or a signed link, with a view/edit permission per field. */
+  readonly shares = {
+    list: (submissionId: string, o?: RequestOptions) => this.h.data<Json[]>("GET", `/submissions/${submissionId}/shares`, o),
+    /** Without email and role the share is a link (`url` in the result). */
+    create: (submissionId: string, body: { permissions: Record<string, "view" | "edit">; label?: string; email?: string; role?: string; expiresInDays?: number }, o?: RequestOptions) => this.h.data<Json>("POST", `/submissions/${submissionId}/shares`, { body, ...o }),
+    revoke: (shareId: string, o?: RequestOptions) => this.h.data<null>("DELETE", `/submission-shares/${shareId}`, o),
+    sharedWithMe: (o?: RequestOptions) => this.h.data<Json[]>("GET", "/shared-with-me", o),
+    getShared: (shareId: string, o?: RequestOptions) => this.h.data<Json>("GET", `/shared-with-me/${shareId}`, o),
+    editShared: (shareId: string, body: { answers: Record<string, unknown>; proofs?: Record<string, unknown> }, o?: RequestOptions) => this.h.data<{ changed: string[] }>("PATCH", `/shared-with-me/${shareId}`, { body, ...o }),
+  };
+
   /** Tasks handed out by form_request, payment_request and sign steps. */
   readonly assignments = {
     list: (q: { workflowId?: string; status?: "pending" | "completed" | "overdue" | "cancelled"; email?: string; limit?: number } = {}, o?: RequestOptions) => this.h.data<Json[]>("GET", "/assignments", { query: q, ...o }),
@@ -57,7 +74,11 @@ export class WorkflowsResource {
     update: (id: string, body: Partial<PortalInput>, o?: RequestOptions) => this.h.data<Json>("PATCH", `/portals/${id}`, { body, ...o }),
     delete: (id: string, o?: RequestOptions) => this.h.data<null>("DELETE", `/portals/${id}`, o),
     /** Emails personal links; they are returned once. */
-    invite: (id: string, people: { email: string; name?: string }[], o?: RequestOptions) => this.h.data<{ email: string; url: string; emailed: boolean }[]>("POST", `/portals/${id}/invites`, { body: { people }, ...o }),
+    invite: (id: string, people: { email: string; name?: string }[], o?: RequestOptions) => this.h.data<{ id: string; email: string; url: string; emailed: boolean }[]>("POST", `/portals/${id}/invites`, { body: { people }, ...o }),
+    /** Kills the invitee's portal link and form links. Submitted responses stay. */
+    revokeInvite: (id: string, inviteId: string, o?: RequestOptions) => this.h.data<{ ok: true }>("DELETE", `/portals/${id}/invites/${inviteId}`, o),
+    /** New personal link (the old one stops working), emailed and returned once. */
+    regenerateInvite: (id: string, inviteId: string, o?: RequestOptions) => this.h.data<{ id: string; email: string; url: string; emailed: boolean }>("POST", `/portals/${id}/invites/${inviteId}/regenerate`, { body: {}, ...o }),
     progress: (id: string, o?: RequestOptions) => this.h.data<Json>("GET", `/portals/${id}/progress`, o),
   };
 
@@ -76,6 +97,11 @@ export class WorkflowsResource {
 
   readonly integrations = {
     health: (o?: RequestOptions) => this.h.data<Json[]>("GET", "/integrations/health", o),
+    /** Failure alert emails: workspace switch, extra recipients and a per-connection on/off map ({ [connectionId]: boolean }). */
+    alerts: {
+      get: (o?: RequestOptions) => this.h.data<{ enabled: boolean; extraEmails: string[]; mutedConnectionIds: string[] }>("GET", "/integrations/alerts", o),
+      update: (body: { enabled?: boolean; extraEmails?: string[]; connections?: Record<string, boolean> }, o?: RequestOptions) => this.h.data<{ enabled: boolean; extraEmails: string[]; mutedConnectionIds: string[] }>("PUT", "/integrations/alerts", { body, ...o }),
+    },
     /** Read-only test; providers that cannot be tested without sending data answer status "unchecked". */
     testConnection: (id: string, o?: RequestOptions) => this.h.data<Json>("POST", `/integrations/connections/${id}/test`, { body: {}, ...o }),
     /** Idempotent per failure state; `warnings` lists steps whose target cannot dedupe. */

@@ -20,6 +20,7 @@ import { PlatformResource } from "./resources/platform";
 import { InsightsResource } from "./resources/insights";
 import { LibraryResource } from "./resources/library";
 import { DistributionResource } from "./resources/distribution";
+import { ProgramsResource } from "./resources/programs";
 import { AdminResource } from "./resources/admin";
 
 export { DEFAULT_VERSION };
@@ -48,6 +49,8 @@ export class FormFlowClient {
   readonly insights: InsightsResource;
   readonly library: LibraryResource;
   readonly distribution: DistributionResource;
+  /** Survey programs (recurring waves, trend), HR attribute sync and CRM-triggered invites. */
+  readonly programs: ProgramsResource;
   /** Audiences, tags, team templates, org security, roles, groups, brand kit, domain join, partner provisioning. */
   readonly admin: AdminResource;
   /** Respondent endpoints (no API key). */
@@ -75,6 +78,7 @@ export class FormFlowClient {
     this.insights = new InsightsResource(this.http);
     this.library = new LibraryResource(this.http);
     this.distribution = new DistributionResource(this.http);
+    this.programs = new ProgramsResource(this.http);
     this.admin = new AdminResource(this.http);
     this.public = new PublicClient({ baseUrl: this.http.opts.baseUrl, fetch: o.fetch });
   }

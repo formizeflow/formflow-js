@@ -9,7 +9,7 @@ export type TriagePatch = { status?: TriageStatus; assigneeId?: string | null; t
 export type ShareMode = "aggregate" | "respondents";
 export type ShareLinkInput = {
   name: string; password?: string | null; expiresInDays?: number | null;
-  config?: { mode?: ShareMode; fieldIds?: string[]; filters?: Condition; windowDays?: number; showMetrics?: boolean };
+  config?: { mode?: ShareMode; fieldIds?: string[]; filters?: Condition; windowDays?: number; showMetrics?: boolean; /** Post-stratify aggregate figures; the report states the effective sample size. */ weighting?: { fieldId: string; targets: Record<string, number> } };
 };
 /** `url` is a bearer capability: store it like a credential. */
 export type ShareLink = { id: string; formId: string; name: string; state: "active" | "expired" | "revoked"; passwordProtected: boolean; expiresAt: number | null; url: string | null; config: Json };
@@ -19,6 +19,9 @@ export type InvitationInput = {
   channel?: "email" | "sms" | "whatsapp"; sendAt?: number; remindAfterDays?: number[]; quickAnswer?: boolean;
 };
 
+export type ResultViewInput = { name: string; shared?: boolean; config: { layout?: string; status?: string; q?: string; from?: string; to?: string; filters?: Json; cols?: string[]; sort?: { id: string; dir: "asc" | "desc" }; triage?: string; tag?: string; assignee?: string } };
+export type ResultView = { id: string; formId: string; name: string; shared: boolean; config: ResultViewInput["config"]; createdBy: string; createdAt: number; updatedAt: number };
+
 /** Results workbench: triage, corrections, spam, invitations, share links and version history. */
 export class ResultsResource {
   constructor(private readonly h: HttpClient) {}
@@ -26,6 +29,14 @@ export class ResultsResource {
   triage(formId: string, o?: RequestOptions) { return this.h.data<TriageMap>("GET", `/forms/${formId}/triage`, o); }
   setTriage(submissionId: string, patch: TriagePatch, o?: RequestOptions) { return this.h.data<TriageRecord>("PATCH", `/submissions/${submissionId}/triage`, { body: patch, ...o }); }
   bulkTriage(body: { ids: string[]; status?: TriageStatus; assigneeId?: string | null; addTags?: string[]; removeTags?: string[] }, o?: RequestOptions) { return this.h.data<{ updated: number }>("POST", "/submissions/bulk-triage", { body, ...o }); }
+
+  /** Saved views of the results table: filters, columns and sort. Shared views are visible to the whole workspace. */
+  readonly views = {
+    list: (formId: string, o?: RequestOptions) => this.h.data<ResultView[]>("GET", `/forms/${formId}/views`, o),
+    create: (formId: string, body: ResultViewInput, o?: RequestOptions) => this.h.data<ResultView>("POST", `/forms/${formId}/views`, { body, ...o }),
+    update: (viewId: string, body: Partial<ResultViewInput>, o?: RequestOptions) => this.h.data<ResultView>("PATCH", `/views/${viewId}`, { body, ...o }),
+    delete: (viewId: string, o?: RequestOptions) => this.h.data<Json>("DELETE", `/views/${viewId}`, o),
+  };
 
   /** Edit history of a response; the original value of every correction stays recoverable. */
   edits(submissionId: string, o?: RequestOptions) { return this.h.data<Json[]>("GET", `/submissions/${submissionId}/edits`, o); }

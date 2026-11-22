@@ -1,9 +1,11 @@
 import type { HttpClient, ListParams, Page, RequestOptions } from "../core";
 
 export const EVENT_TYPES = [
-  "form.published", "form.updated", "form.archived", "submission.created", "submission.completed", "submission.deleted",
+  "form.published", "form.updated", "form.archived", "form.deleted", "submission.created", "submission.completed", "submission.updated", "submission.deleted",
+  "comment.created", "member.added", "member.removed", "member.role_changed",
   "payment.status_changed", "workflow.completed", "workflow.failed",
   "experiment.started", "experiment.paused", "experiment.guardrail_breached", "experiment.winner_declared", "experiment.promoted",
+  "apikey.expiring",
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 

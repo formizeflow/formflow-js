@@ -14,7 +14,8 @@ export class PlatformResource {
 
   readonly workspaces = {
     list: (o?: RequestOptions) => this.h.data<Json[]>("GET", "/workspaces", o),
-    create: (body: { name: string; slug?: string }, o?: RequestOptions) => this.h.data<Json>("POST", "/workspaces", { body, ...o }),
+    /** `bootstrapKey` also mints a first key for the new workspace, returned once as `data.bootstrapKey.key`. */
+    create: (body: { name: string; slug?: string; bootstrapKey?: { name: string; scopes: string[]; expiresAt?: number; allowedIps?: string[] } }, o?: RequestOptions) => this.h.data<Json>("POST", "/workspaces", { body, ...o }),
   };
 
   readonly folders = {
@@ -37,9 +38,16 @@ export class PlatformResource {
     list: (q: { search?: string; kind?: "image" | "video" | "font"; cursor?: number } = {}, o?: RequestOptions) => this.h.data<{ data: MediaAsset[]; nextCursor?: number | null }>("GET", "/media", { query: q, ...o }),
     /** Upload from base64 (about 1.3 MB of file) or have the server fetch a public `fromUrl`. Returns a stable `url`. Larger files: multipart POST /api/media. */
     upload: (body: { filename: string; contentBase64?: string; fromUrl?: string; alt?: string; decorative?: boolean }, o?: RequestOptions) => this.h.data<MediaAsset>("POST", "/media", { body, ...o }),
+    /** Stock photo search. `enabled: false` means the server has no stock provider; show `credit` next to a photo. */
+    stock: (q: { q: string; page?: number }, o?: RequestOptions) => this.h.data<{ enabled: boolean; results: Record<string, unknown>[]; totalPages: number }>("GET", "/media/stock", { query: q, ...o }),
     /** Upload bytes you hold (Uint8Array). */
     uploadBytes: (filename: string, bytes: Uint8Array, meta: { alt?: string; decorative?: boolean } = {}, o?: RequestOptions) =>
       this.h.data<MediaAsset>("POST", "/media", { body: { filename, contentBase64: btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join("")), ...meta }, ...o }),
+    /** Designs of the connected Canva account (connect Canva under Integrations first; `connectionId` null means not connected). */
+    canvaDesigns: (q: { connectionId?: string; q?: string; continuation?: string } = {}, o?: RequestOptions) =>
+      this.h.data<{ enabled: boolean; connectionId: string | null; designs: { id: string; title: string; thumbnailUrl: string | null }[]; continuation: string | null }>("GET", "/media/canva", { query: q, ...o }),
+    /** Export one page of a Canva design to PNG or JPG and store it in the media library. */
+    importCanva: (body: { connectionId: string; designId: string; title?: string; format?: "png" | "jpg"; page?: number; alt?: string; decorative?: boolean }, o?: RequestOptions) => this.h.data<MediaAsset>("POST", "/media/canva/import", { body, ...o }),
   };
 
   readonly integrations = {

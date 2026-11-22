@@ -1,6 +1,6 @@
 import type { HttpClient, ListParams, Page, RequestOptions } from "../core";
 import type { Condition } from "./definition";
-import type { ExportJob } from "./exports";
+import type { ExportFormat, ExportJob } from "./exports";
 
 export type SubmissionStatus = "partial" | "completed" | "spam" | "deleted";
 export type Submission = {
@@ -14,6 +14,8 @@ export type Submission = {
 };
 export type ListSubmissionsParams = ListParams & {
   status?: SubmissionStatus; from?: number | string; to?: number | string; q?: string;
+  /** With `q`: search only this question's answer. */
+  fieldId?: string;
   /** Structured filter (sent as JSON). */
   filters?: Condition; sort?: "createdAt:asc" | "createdAt:desc";
   expand?: "form"[]; fields?: string[]; redact?: "sensitive";
@@ -30,7 +32,7 @@ export class SubmissionsResource {
   listAll(formId: string, q?: ListSubmissionsParams, o?: RequestOptions) { return this.h.paginate<Submission>(`/forms/${formId}/submissions`, prep(q) ?? {}, o); }
   /** Same filters in a request body. Sensitive fields are redacted unless `includeSensitive` (needs workspace:manage). */
   search(formId: string, body: SearchSubmissionsInput = {}, o?: RequestOptions): Promise<Page<Submission>> {
-    return this.h.request<Page<Submission>>("POST", `/forms/${formId}/submissions/search`, { body, ...o }).then((r) => ({ data: r.data, nextCursor: r.nextCursor ?? null }));
+    return this.h.request<Page<Submission>>("POST", `/forms/${formId}/submissions/search`, { body, ...o }).then((r) => ({ data: r.data, nextCursor: r.nextCursor ?? null, ...(r.partial ? { partial: true, scanned: r.scanned } : {}) }));
   }
   /** Iterate every match of a search. */
   async *searchAll(formId: string, body: SearchSubmissionsInput = {}, o?: RequestOptions): AsyncGenerator<Submission, void, void> {
@@ -46,10 +48,12 @@ export class SubmissionsResource {
   delete(id: string, o?: RequestOptions) { return this.h.data<null>("DELETE", `/submissions/${id}`, o); }
   bulkDelete(ids: string[], o?: RequestOptions) { return this.h.data<{ deleted: number }>("POST", "/submissions/bulk-delete", { body: { ids }, ...o }); }
   /** Start an export of matching responses. Poll with `exports.get`. */
-  export(formId: string, body: { format?: "csv" | "json" | "xlsx" | "pdf"; filter?: { status?: "completed" | "partial" | "any"; from?: number; to?: number; filters?: Condition; includeSensitive?: boolean } } = {}, o?: RequestOptions) {
+  export(formId: string, body: { format?: ExportFormat; filter?: { status?: "completed" | "partial" | "any"; from?: number; to?: number; filters?: Condition; includeSensitive?: boolean; /** Include test-mode submissions (left out by default). */ includeTest?: boolean } } = {}, o?: RequestOptions) {
     return this.h.data<ExportJob>("POST", `/forms/${formId}/exports`, { body, ...o });
   }
-  bulkExport(body: { formId: string; ids?: string[]; format?: "csv" | "json" | "xlsx" | "pdf"; filter?: Record<string, unknown> }, o?: RequestOptions) {
+  /** Email the response rendered through a document template (PDF or Word) to up to 10 recipients. */
+  emailDocument(id: string, body: { to: string[]; templateId?: string | null; message?: string }, o?: RequestOptions) { return this.h.data<Record<string, unknown>>("POST", `/submissions/${id}/document/email`, { body, ...o }); }
+  bulkExport(body: { formId: string; ids?: string[]; format?: ExportFormat; filter?: Record<string, unknown> }, o?: RequestOptions) {
     return this.h.data<ExportJob>("POST", "/submissions/bulk-export", { body, ...o });
   }
 }
