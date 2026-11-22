@@ -25,7 +25,7 @@ export type DecideRequest = {
   include?: "all" | "none";
   /** Answer show: false, reason "already_shown", once this uid was exposed to the entry's test or completed the form. */
   firstRunOnly?: boolean;
-  /** With firstRunOnly: a person shown but not yet done still sees it for this many hours after first exposure. */
+  /** With firstRunOnly: a person shown but not yet done still sees it for this many hours after first exposure. Default 24. */
   maxAgeHours?: number;
   /** Integration tests: a real arm, but no exposure is counted. A uid starting `test_` does the same. */
   test?: boolean;
